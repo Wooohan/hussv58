@@ -7,6 +7,7 @@ import {
   stopScraperTask,
   getScraperStatus,
   getScraperData,
+  getActiveTask,
   TaskStatus,
 } from '../services/backendService';
 
@@ -49,8 +50,31 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
     scrollToBottom();
   }, [logs]);
 
-  // Clean up polling on unmount
+  // Auto-reconnect to running task on mount + clean up on unmount
   useEffect(() => {
+    const reconnect = async () => {
+      try {
+        const active = await getActiveTask('scraper');
+        if (active.task_id && active.task) {
+          const status = active.task;
+          if (status.status === 'running' || status.status === 'stopping') {
+            taskIdRef.current = active.task_id;
+            setIsRunning(true);
+            setLogs(status.logs);
+            setProgress(status.progress);
+            setTotalDbSaved(status.dbSaved);
+            prevExtractedRef.current = status.extracted || 0;
+            if (status.recentData && status.recentData.length > 0) {
+              setScrapedData(status.recentData);
+            }
+            startPolling(active.task_id);
+          }
+        }
+      } catch {
+        // Server not reachable, ignore
+      }
+    };
+    reconnect();
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
