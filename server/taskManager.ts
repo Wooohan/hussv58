@@ -131,21 +131,16 @@ class TaskManager {
     const task = this.tasks.get(taskId);
     if (!task) return null;
 
-// Separate logs and data from the rest of the task object
+    // Return copy without full scrapedData to keep response small
     const { scrapedData, logs, ...rest } = task;
-
     return {
       ...rest,
       scrapedCount: scrapedData.length,
-      // Keep the preview of scraped data small
-      recentData: scrapedData.slice(-20), 
-      // This is the fix: return the last 1,000 log entries
-      logs: logs.slice(-1000), 
-      // Include the actual total count so your UI can show "Logs: 10,450"
-      totalLogsAvailable: logs.length 
+      recentData: scrapedData.slice(-100),
+      logs: logs.slice(-500),
     };
   }
-  
+
   getTaskData(taskId: string): any[] | null {
     const task = this.tasks.get(taskId);
     if (!task) return null;
