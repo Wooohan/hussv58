@@ -190,7 +190,7 @@ class TaskManager {
     let dbSaved = 0;
     let failed = 0;
     const batchBuffer: any[] = [];
-    const BATCH_SIZE = 50;
+    const BATCH_SIZE = 500;
 
     for (let i = 0; i < total; i++) {
       if (task.status === 'stopping') break;
