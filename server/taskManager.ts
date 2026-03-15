@@ -17,6 +17,14 @@ function nowStr(): string {
   return new Date().toISOString().split('T')[1].split('.')[0];
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    promise,
+    new Promise<T>(resolve => { timer = setTimeout(() => resolve(fallback), ms); }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 interface TaskInfo {
   id: string;
   type: 'scraper' | 'insurance';
@@ -192,7 +200,8 @@ class TaskManager {
 
       let data: any = null;
       try {
-        data = await scrapeCarrier(mc);
+        // 30s max per carrier — prevents getting stuck on slow/hanging requests
+        data = await withTimeout(scrapeCarrier(mc), 30000, null);
       } catch (e: any) {
         this.addLog(taskId, `[Error] MC ${mc}: ${String(e.message || e).substring(0, 100)}`);
       }
@@ -222,9 +231,10 @@ class TaskManager {
 
           // Batch save without pausing (key speed improvement from hussfix5ba)
           if (batchBuffer.length >= BATCH_SIZE) {
-            const saved = await this.saveBatchToSupabase(db, batchBuffer.splice(0));
-            dbSaved += saved;
-            this.addLog(taskId, `DB Sync: ${saved}/${BATCH_SIZE} records saved`);
+              const toSave = batchBuffer.splice(0);
+              const saved = await withTimeout(this.saveBatchToSupabase(db, toSave), 20000, 0);
+              dbSaved += saved;
+              this.addLog(taskId, `DB Sync: ${saved}/${toSave.length} records saved`);
           }
         } else {
           this.addLog(taskId, `[Filtered] MC ${mc}: ${data.legalName || ''} (didn't match filters)`);
@@ -243,7 +253,7 @@ class TaskManager {
 
     // Final batch save
     if (batchBuffer.length > 0) {
-      const saved = await this.saveBatchToSupabase(db, batchBuffer);
+      const saved = await withTimeout(this.saveBatchToSupabase(db, batchBuffer), 20000, 0);
       dbSaved += saved;
       task.dbSaved = dbSaved;
       this.addLog(taskId, `Final sync: ${saved} records saved`);
@@ -272,7 +282,8 @@ class TaskManager {
         this.addLog(taskId, `[INSURANCE] [${i + 1}/${dotNumbers.length}] Querying DOT: ${dot}...`);
 
         try {
-          const result = await fetchInsuranceData(dot);
+          // 15s max per insurance lookup
+          const result = await withTimeout(fetchInsuranceData(dot), 15000, { policies: [], raw: null });
           const policies = result.policies || [];
 
           if (policies.length > 0) {
