@@ -1,4 +1,4 @@
-/**
+/***
  * Background task manager for persistent scraping.
  * Ported from hussfix5ba's task_manager.py.
  * Tasks continue running on the server even if the user closes their browser.
