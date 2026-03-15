@@ -25,12 +25,20 @@ const INSURANCE_HEADERS = {
 // ============================================================
 // FETCH HELPER — direct server-side request (no proxy hop)
 // ============================================================
-export async function fetchFmcsa(url: string, retries = 2, delayMs = 300): Promise<string | null> {
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    promise,
+    new Promise<T>(resolve => { timer = setTimeout(() => resolve(fallback), ms); }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+export async function fetchFmcsa(url: string, retries = 1, delayMs = 200): Promise<string | null> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const resp = await axios.get(url, {
         headers: HEADERS,
-        timeout: 15000,
+        timeout: 10000,
         maxRedirects: 5,
       });
       if (resp.status >= 400 && resp.status < 500) return null;
@@ -344,7 +352,7 @@ export async function fetchInsuranceData(dot: string): Promise<{
       try {
         const resp = await axios.get(targetUrl, {
           headers: INSURANCE_HEADERS,
-          timeout: 15000,
+          timeout: 10000,
           maxRedirects: 5,
         });
         if (resp.status >= 400 && resp.status < 500) break; // try next URL
@@ -433,15 +441,18 @@ export async function scrapeCarrier(mcNumber: string): Promise<any | null> {
   status = status.replace(/(\*Please Note|Please Note|For Licensing)[\s\S]*/i, '').replace(/\s+/g, ' ').trim();
 
   // Parallel fetch: email + safety + inspections (same as hussfix5ba)
+  // Each sub-fetch gets its own 15s timeout so one slow fetch doesn't block everything
   let email = '';
   let safety: any = null;
   let inspData: any = null;
 
   if (dotNumber) {
+    const emptyInsp = { inspections: [], crashes: [] };
+    const emptySafety = { rating: 'N/A', ratingDate: '', basicScores: [], oosRates: [] };
     [email, safety, inspData] = await Promise.all([
-      findDotEmail(dotNumber),
-      fetchSafetyData(dotNumber),
-      fetchInspectionAndCrashData(dotNumber),
+      withTimeout(findDotEmail(dotNumber), 15000, ''),
+      withTimeout(fetchSafetyData(dotNumber), 15000, emptySafety),
+      withTimeout(fetchInspectionAndCrashData(dotNumber), 15000, emptyInsp),
     ]);
   }
 
