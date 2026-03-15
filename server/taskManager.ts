@@ -136,8 +136,8 @@ class TaskManager {
     return {
       ...rest,
       scrapedCount: scrapedData.length,
-      recentData: scrapedData.slice(-20),
-      logs: logs.slice(-100),
+      recentData: scrapedData.slice(-100),
+      logs: logs.slice(-200),
     };
   }
 
