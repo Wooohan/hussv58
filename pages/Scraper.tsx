@@ -37,10 +37,13 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedCarrier, setSelectedCarrier] = useState<CarrierData | null>(null);
 
+  const [visibleCount, setVisibleCount] = useState(100);
+
   const logsEndRef = useRef<HTMLDivElement>(null);
   const taskIdRef = useRef<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevExtractedRef = useRef(0);
+  const resultsContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -49,6 +52,15 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
   useEffect(() => {
     scrollToBottom();
   }, [logs]);
+
+  // Lazy-load more results on scroll
+  const handleResultsScroll = () => {
+    const el = resultsContainerRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 50) {
+      setVisibleCount(prev => prev + 100);
+    }
+  };
 
   // Auto-reconnect to running task on mount + clean up on unmount
   useEffect(() => {
@@ -139,6 +151,7 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
       prevExtractedRef.current = 0;
       setTotalDbSaved(0);
       setScrapedData([]);
+      setVisibleCount(100);
       setProgress(0);
       setLogs([
         'Initializing Server-Side High-Speed Scraper...',
@@ -546,9 +559,9 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
           <div className="h-72 bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden flex flex-col">
             <div className="p-4 border-b border-slate-700 bg-slate-800/80 flex justify-between items-center">
               <h3 className="font-bold text-white text-sm">Live Results Preview</h3>
-              <span className="text-xs text-slate-500">{scrapedData.length} records found</span>
+              <span className="text-xs text-slate-500">{Math.min(scrapedData.length, visibleCount)} of {scrapedData.length} records</span>
             </div>
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-auto" ref={resultsContainerRef} onScroll={handleResultsScroll}>
               <table className="w-full text-left text-sm text-slate-400">
                 <thead className="bg-slate-900 text-slate-200 sticky top-0">
                   <tr>
@@ -566,7 +579,7 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
                       <td colSpan={6} className="p-8 text-center text-slate-600">No data extracted yet.</td>
                     </tr>
                   ) : (
-                    scrapedData.slice().reverse().map((row, i) => (
+                    scrapedData.slice().reverse().slice(0, visibleCount).map((row, i) => (
                       <tr key={i} className="hover:bg-slate-700/50 transition-colors group">
                         <td className="p-3 font-mono text-white">{row.mcNumber}</td>
                         <td className="p-3 truncate max-w-[150px]" title={row.legalName}>{row.legalName}</td>
