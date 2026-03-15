@@ -174,7 +174,7 @@ class TaskManager {
     return result;
   }
 
-  // ─── Internal: Scraper runner (no sync pauses, batch save every 50) ──────
+  // ─── Internal: Scraper runner (batch save every 500, 30s pause on sync) ──────
   private async runScraper(
     taskId: string,
     start: number,
@@ -229,12 +229,16 @@ class TaskManager {
           batchBuffer.push(data);
           this.addLog(taskId, `[Success] MC ${mc}: ${data.legalName || 'Unknown'}`);
 
-          // Batch save without pausing (key speed improvement from hussfix5ba)
+          // Batch save every 500 records with 30s pause
           if (batchBuffer.length >= BATCH_SIZE) {
               const toSave = batchBuffer.splice(0);
-              const saved = await withTimeout(this.saveBatchToSupabase(db, toSave), 20000, 0);
+              this.addLog(taskId, `DB Sync: saving ${toSave.length} records...`);
+              const saved = await withTimeout(this.saveBatchToSupabase(db, toSave), 60000, 0);
               dbSaved += saved;
-              this.addLog(taskId, `DB Sync: ${saved}/${toSave.length} records saved`);
+              task.dbSaved = dbSaved;
+              this.addLog(taskId, `DB Sync: ${saved}/${toSave.length} records saved. Pausing 30s...`);
+              await new Promise(r => setTimeout(r, 30000));
+              this.addLog(taskId, `Resuming scraping after 30s pause`);
           }
         } else {
           this.addLog(taskId, `[Filtered] MC ${mc}: ${data.legalName || ''} (didn't match filters)`);
