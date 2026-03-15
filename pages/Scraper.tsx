@@ -144,7 +144,7 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
         'Initializing Server-Side High-Speed Scraper...',
         `Mode: Server-Side Direct (no proxy hop)`,
         `Targeting ${config.recordCount} records starting at MC# ${config.startPoint}`,
-        'DB auto-sync every 50 records (no pause)',
+        'DB auto-sync every 500 records (30s pause on sync)',
       ]);
 
       try {
@@ -320,7 +320,7 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
           <Database size={20} className="text-indigo-400 animate-pulse" />
           <div>
             <p className="text-white font-bold text-sm">Server syncing to DB...</p>
-            <p className="text-indigo-300 text-xs">{totalDbSaved} records saved (no pause)</p>
+            <p className="text-indigo-300 text-xs">{totalDbSaved} records saved (30s pause on sync)</p>
           </div>
         </div>
       )}
