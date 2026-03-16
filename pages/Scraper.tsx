@@ -22,6 +22,7 @@ interface ScraperProps {
 export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade }) => {
   const [isRunning, setIsRunning] = useState(false);
   const [totalDbSaved, setTotalDbSaved] = useState(0);
+  const [totalScrapedCount, setTotalScrapedCount] = useState(0);
   const [config, setConfig] = useState<ScraperConfig>({
     startPoint: '1580000',
     recordCount: 50,
@@ -63,6 +64,7 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
             setLogs(status.logs);
             setProgress(status.progress);
             setTotalDbSaved(status.dbSaved);
+            setTotalScrapedCount(status.scrapedCount || status.extracted || 0);
             prevExtractedRef.current = status.extracted || 0;
             if (status.recentData && status.recentData.length > 0) {
               setScrapedData(status.recentData);
@@ -98,6 +100,9 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
       if (status.recentData && status.recentData.length > 0) {
         setScrapedData(status.recentData);
       }
+
+      // Update total scraped count from server
+      setTotalScrapedCount(status.scrapedCount || status.extracted || 0);
 
       // Update usage counter (delta)
       const newExtracted = status.extracted || 0;
@@ -138,6 +143,7 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
       setIsRunning(true);
       prevExtractedRef.current = 0;
       setTotalDbSaved(0);
+      setTotalScrapedCount(0);
       setScrapedData([]);
       setProgress(0);
       setLogs([
@@ -546,7 +552,7 @@ export const Scraper: React.FC<ScraperProps> = ({ user, onUpdateUsage, onUpgrade
           <div className="h-72 bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden flex flex-col">
             <div className="p-4 border-b border-slate-700 bg-slate-800/80 flex justify-between items-center">
               <h3 className="font-bold text-white text-sm">Live Results Preview</h3>
-              <span className="text-xs text-slate-500">{scrapedData.length} records found</span>
+              <span className="text-xs text-slate-500">{isRunning ? totalScrapedCount : scrapedData.length} records found</span>
             </div>
             <div className="flex-1 overflow-auto">
               <table className="w-full text-left text-sm text-slate-400">
