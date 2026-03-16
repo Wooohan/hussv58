@@ -137,8 +137,8 @@ class TaskManager {
     return {
       ...rest,
       scrapedCount: scrapedData.length,
-      // Keep the preview of scraped data small
-      recentData: scrapedData.slice(-20), 
+      // Keep the preview of scraped data manageable
+      recentData: scrapedData.slice(-100), 
       // This is the fix: return the last 1,000 log entries
       logs: logs.slice(-1000), 
       // Include the actual total count so your UI can show "Logs: 10,450"
